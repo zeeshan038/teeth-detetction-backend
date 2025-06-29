@@ -2,8 +2,35 @@
 const router = require("express").Router();
 
 //Controllers
-const { test } = require("../controllers/user");
+const {
+  signup,
+  login,
+  verifyOTP,
+  forgotPassword,
+  resetPassword,
+  changePassword,
+  editProfile,
+  getUserInfo,
+  deleteUser,
+  uploadProfilePicture,
+} = require("../controllers/user");
 
-router.get("/test" , test)
+const verifyUser = require("../middlewares/verifyUser");
+
+//Routes
+router.post("/signup", signup);
+router.post("/login", login);
+router.post("/forgot-password", forgotPassword);
+router.put("/verify-token", verifyOTP);
+router.put("/reset-password/:email", resetPassword);
+
+//middleware
+router.use(verifyUser);
+
+router.put("/change-password", changePassword)
+router.put("/edit-profile", editProfile);
+router.get('/getuserInfo' , getUserInfo);
+router.delete("/delete-user/:id" , deleteUser);
+
 
 module.exports = router;

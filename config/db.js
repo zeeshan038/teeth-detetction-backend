@@ -1,11 +1,11 @@
 // NPM Package
 const mongoose = require("mongoose");
 
+const uri = process.env.MONGO_URI;
+console.log("uri" , uri)
 const connectDb = async () => {
   mongoose
-    .connect(process.env.MONGO_URI, {
-      dbName: "WonderTale",
-    })
+    .connect(uri)
     .then(() => {
       console.log("Connection Created");
     })
