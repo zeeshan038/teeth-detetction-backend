@@ -13,6 +13,7 @@ const {
   getUserInfo,
   deleteUser,
   uploadProfilePicture,
+  updatebio,
 } = require("../controllers/user");
 
 const verifyUser = require("../middlewares/verifyUser");
@@ -26,7 +27,7 @@ router.put("/reset-password/:email", resetPassword);
 
 //middleware
 router.use(verifyUser);
-
+router.put("/update-bio", updatebio);
 router.put("/change-password", changePassword)
 router.put("/edit-profile", editProfile);
 router.get('/getuserInfo' , getUserInfo);

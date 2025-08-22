@@ -4,14 +4,13 @@ const cors = require("cors");
 const app = express();
 
 // Paths
-
 const apiRoutes = require("./routes/index");
 const connectDb = require("./config/db");
 
 // Connect to DB
 connectDb();
 
-// 🔧 Middleware
+// Middleware
 app.use(cors({
   origin: "http://localhost:5173",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

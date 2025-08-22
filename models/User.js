@@ -2,16 +2,19 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
+    firstName: {
       type: String,
       required: true,
     },
+    lastName: {
+      type: String,
+      required: true,
+    },  
     email: {
       type: String,
       unique: true,
       required: true,
     },
-    profileImage: { type: String, default: "" },
     password: {
       type: String,
       required: true,
@@ -19,17 +22,36 @@ const userSchema = new mongoose.Schema(
       minlenght: [6, "Password must be at least 6 characters"],
       maxlength: [200, "Password cannot excede 200 characters"],
     },
-    favScore: {
-      type: Number,
-      default: 0,
+    dob: {
+      type: Date,
+      required: true,
     },
-    profileImg: { type: String, default: "" },
-    verificationCode: { type: String, select: false },
-    otpLastSentTime: { type: Number, select: false },
+    phoneNo :{
+      type: Number
+    },
+    role : {
+      type: String,
+      enum: ["patient", "nurse"],
+      default: "patient",
+    },
+    speciality : {
+      type: String,
+      default : ""
+    },
+    profileImage : {
+      type: String,
+      default :""
+    },
+    bio:{
+      type : String ,
+      default:""
+    }
   },
   {
     timestamps: true,
   }
 );
 
-module.exports = mongoose.model("user", userSchema);
+// Reuse existing model if already compiled to prevent OverwriteModelError
+const User = mongoose.models.user || mongoose.model("user", userSchema);
+module.exports = User;

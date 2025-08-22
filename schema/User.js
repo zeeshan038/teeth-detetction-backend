@@ -4,17 +4,18 @@ const Joi = require("joi");
 //Signup Schma
 module.exports.signupSchema = (payload) => {
   const schema = Joi.object({
-    name: Joi.string().required().messages({
-      "string.empty": "Name is required.",
-      "any.required": "Name is a mandatory field.",
+    firstName: Joi.string().messages({
+      "string.empty": "FirstName is required.",
+      "any.required": "First Name is a mandatory field.",
+    }),
+    lastName: Joi.string().messages({
+      "string.empty": "LastName is required.",
+      "any.required": "Last Name is a mandatory field.",
     }),
     email: Joi.string().email().required().messages({
       "string.email": "Please provide a valid email address.",
       "string.empty": "Email is required.",
       "any.required": "Email is a mandatory field.",
-    }),
-    profileImg: Joi.string().uri().messages({
-      "string.uri": "Profile image must be a valid URL.",
     }),
     password: Joi.string().min(6).max(200).required().messages({
       "string.min": "Password must be at least 6 characters long.",
@@ -22,14 +23,26 @@ module.exports.signupSchema = (payload) => {
       "string.empty": "Password is required.",
       "any.required": "Password is a mandatory field.",
     }),
-    confirmPassword: Joi.string()
-      .valid(Joi.ref("password"))
-      .required()
-      .messages({
-        "any.only": "Passwords do not match.",
-        "string.empty": "Confirm password is required.",
-        "any.required": "Confirm password is a mandatory field.",
-      }),
+    phoneNo: Joi.number().messages({
+      "number.empty": "Phone Number is required.",
+      "any.required": "Phone Number is a mandatory field.",
+    }),
+    dob: Joi.date().messages({
+      "date.empty": "Date of Birth is required.",
+      "any.required": "Date of Birth is a mandatory field.",
+    }),
+    role: Joi.string().required().messages({
+      "string.empty": "Role is required.",
+      "any.required": "Role is a mandatory field.",
+    }),
+    speciality: Joi.string().messages({
+      "string.empty": "Speciality is required.",
+      "any.required": "Speciality is a mandatory field.",
+    }),
+    profileImage: Joi.string().messages({
+      "string.empty": "Profile Image is required.",
+      "any.required": "Profile Image is a mandatory field.",
+    }),
   }).unknown(false);
 
   const result = schema.validate(payload);
@@ -62,7 +75,7 @@ module.exports.userSchema = async (payload) => {
       "string.empty": "Name is required.",
       "any.required": "Name is a mandatory field.",
     }),
-    email: Joi.string().email().required().messages({
+    email: Joi.string().email().messages({
       "string.email": "Please provide a valid email address.",
       "string.empty": "Email is required.",
       "any.required": "Email is a mandatory field.",

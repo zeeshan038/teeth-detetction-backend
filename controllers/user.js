@@ -50,17 +50,22 @@ module.exports.signup = async (req, res) => {
     const hashedPassword = await bcrypt.hash(payload.password, salt);
 
     //Creating user
-    await User.create({
-      name: payload.name,
+   const user = await User.create({
+      firstName: payload.firstName,
+      lastName: payload.lastName,
       email: payload.email,
       password: hashedPassword,
-      profileImg: payload.profileImg,
+      phoneNo: payload.phoneNo,
+      dob: payload.dob,
+      role: payload.role,
     });
 
+    const token = genrateToken(user._id);
     //Response
     return res.status(201).json({
       status: true,
       msg: "User Registered Successfully!",
+      token
     });
   } catch (error) {
     return res.status(500).json({
@@ -130,6 +135,40 @@ module.exports.login = async (req, res) => {
     });
   }
 };
+
+
+/**ss
+ * @desciption update bio
+ * @route POST /api/user/update-bio
+ * @access Private
+ */
+module.exports.updatebio = async(req , res)=>{
+  const {_id} = req.user;
+  const {bio}=req.body;
+
+  try {
+     const user = await User.findById(_id);
+     if (!user) {
+      return res.status(404).json({
+        status: false,
+        msg: "User not found",
+      });
+     }
+     user.bio = bio;
+     await user.save();
+     return res.status(200).json({
+      status: true,
+      msg: "Bio updated successfully",
+      user,
+     }); 
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      status: false,
+      errors: error,
+    });
+  }
+}
 
 /**ss
  * @desciption Forgot Password
