@@ -65,6 +65,8 @@ module.exports.signup = async (req, res) => {
     return res.status(201).json({
       status: true,
       msg: "User Registered Successfully!",
+      role : user.role,
+      id : user._id,
       token
     });
   } catch (error) {
@@ -94,9 +96,11 @@ module.exports.login = async (req, res) => {
 
   try {
     //Checking valid user
-    const validUser = await User.findOne({ email: payload.email }).select(
-      "password"
-    );
+    const validUser = await User.findOne({ email: payload.email })
+    .select("+password role");
+    console.log('useer' , validUser);
+    const role = validUser.role;  
+    console.log('role' , role);
     if (!validUser) {
       return res.status(401).json({
         status: false,
@@ -127,6 +131,7 @@ module.exports.login = async (req, res) => {
         status: true,
         message: "User Logged In Successfully!",
         id: validUser._id,
+        role : validUser.role,
         token,
       });
   } catch (error) {

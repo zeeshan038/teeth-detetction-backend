@@ -11,11 +11,7 @@ const connectDb = require("./config/db");
 connectDb();
 
 // Middleware
-app.use(cors({
-  origin: "http://localhost:5173",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  credentials: true,
-}));
+app.use(cors());
 
 
 // Parse JSON and form-urlencoded bodies
