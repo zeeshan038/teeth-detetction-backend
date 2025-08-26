@@ -379,8 +379,6 @@ module.exports.changePassword = async (req, res) => {
   const { _id } = req.user;
   const payload = req.body;
 
-  console.log("pay" , payload)
-
   //Error Handling
   const result = passwordSchema(payload);
   if (result.error) {
@@ -416,7 +414,6 @@ module.exports.changePassword = async (req, res) => {
 
     // Update the user's password
     await User.updateOne({ _id }, { password: hashedPassword });
-
     return res.status(200).json({
       status: true,
       msg: "Password updated successfully",
@@ -468,10 +465,8 @@ module.exports.editProfile = async (req, res) => {
  *  @route GET /api/user/user-info
  *  @access Private
  */
-
 module.exports.getUserInfo = async (req, res) => {
   const { _id } = req.user;
-
   try {
     const user = await User.findById(_id);
     if (!user) {
@@ -497,9 +492,9 @@ module.exports.getUserInfo = async (req, res) => {
  *  @route PUT /api/user/delete-user
  *  @access Private
  */
-
 module.exports.deleteUser = async (req, res) => {
   const { _id } = req.user;
+  console.log("id" , _id);
   try {
     const user = await User.findByIdAndDelete(_id);
     if (!user) {
@@ -510,7 +505,7 @@ module.exports.deleteUser = async (req, res) => {
     }
     return res.status(200).json({
       status: true,
-      msg: "User deleted successfully",
+      msg: "User deleted successfully"
     });
   } catch (error) {
     return res.status(500).json({
@@ -525,10 +520,8 @@ module.exports.deleteUser = async (req, res) => {
  *  @route GET /api/user/upload image
  *  @access Private
  */
-
 module.exports.uploadProfilePicture = async (req, res) => {
   const { _id } = req.user;
-
   try {
     if (!req.file) {
       return res.status(400).json({

@@ -31,7 +31,7 @@ router.put("/update-bio", updatebio);
 router.put("/change-password", changePassword)
 router.put("/edit-profile", editProfile);
 router.get('/getuserInfo' , getUserInfo);
-router.delete("/delete-user/:id" , deleteUser);
+router.delete("/delete" , deleteUser);
 
 
 module.exports = router;
