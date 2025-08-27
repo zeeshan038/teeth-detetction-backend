@@ -17,7 +17,6 @@ const {
 } = require("../controllers/user");
 
 const verifyUser = require("../middlewares/verifyUser");
-
 //Routes
 router.post("/signup", signup);
 router.post("/login", login);

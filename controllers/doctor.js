@@ -1,4 +1,4 @@
-const appoinment = require("../models/appoinment");
+const appoinment =require("../models/appoinment");
 
 /**
  * @desciption get all appoinments
@@ -8,7 +8,7 @@ const appoinment = require("../models/appoinment");
 module.exports.getAllAppoinments = async(req , res)=>{
     const {_id} = req.user;
     try {
-        const appointments = await appoinment.find({doctorId:_id});
+        const appointments = await appoinment.find({doctorId:_id}).populate("patientId");
         return res.status(200).json({
             status: true,
             msg: "Appointments fetched successfully",
@@ -18,7 +18,7 @@ module.exports.getAllAppoinments = async(req , res)=>{
         console.log(error);
         return res.status(500).json({
             status: false,
-            errors: error,
+            errors: error.message,
         });
     }
 }
