@@ -2,13 +2,15 @@
 const router = require("express").Router();
 
 //Controllers
-const { getAllAppoinments } = require("../controllers/doctor");
+const { getAllAppoinments, acceptAppoinmment, rejectAppoinment } = require("../controllers/doctor");
 
 const verifyUser = require("../middlewares/verifyUser");
 
 //middleware
 router.use(verifyUser);
-router.get('/appoinments' , getAllAppoinments)
-
+router.get('/appoinments' , getAllAppoinments);
+router.put('/appointment/:id' , acceptAppoinmment);
+router.put('/reject/:id', rejectAppoinment);
 
 module.exports = router;
+ 
