@@ -6,13 +6,9 @@ const UserLogs = require("./models/UserLogs");
 const StoryModel = require("./models/Story");
 const Favorite = require("./models/Favorite");
 const User = require("./models/User");
+const ChatMessage = require("./models/ChatMessage");
 
 // Scores
-const scores = {
-  impression: 1,
-  click: 3,
-  favorite: 10,
-};
 
 // Users
 const users = {};
@@ -24,184 +20,129 @@ module.exports = (server) => {
     console.log("User connected with userId:", socket.handshake.query.userId);
 
     const userId = socket.handshake.query.userId;
-    users[userId] = socket;
-
-    // Function to update user logs and scores
-    const updateUserLogsAndScores = async (data, updateFields) => {
-      const userData = { user: data.user, storyId: data.storyId };
+    users[userId] = socket
+    
+    // Join user to their room for private messaging
+    socket.join(userId);
+    
+    // Handle sending messages
+    socket.on("sendMessage", async (data) => {
       try {
-        const story = await StoryModel.findById(data.storyId);
-        if (!story) {
-          console.error("Story not found");
+        const { receiverId, message, messageType = "text", fileUrl = "" } = data;
+        const senderId = userId;
+
+        // Validate receiver exists
+        const receiver = await User.findById(receiverId);
+        if (!receiver) {
+          socket.emit("error", { message: "Receiver not found" });
           return;
         }
 
-        const updatePayload = {
-          ...updateFields,
-          $set: {
-            storyId: data.storyId,
-          },
-          $push: { genres: story.genres },
-        };
+        // Create conversation ID
+        const conversationId = [senderId, receiverId].sort().join("_");
 
-        // Update or create user log
-        const userLog = await UserLogs.findOneAndUpdate(
-          userData,
-          updatePayload,
+        const newMessage = new ChatMessage({
+          sender: senderId,
+          receiver: receiverId,
+          message,
+          messageType,
+          fileUrl,
+          conversationId
+        });
+
+        await newMessage.save();
+        await newMessage.populate('sender', 'firstName lastName profileImage role');
+        await newMessage.populate('receiver', 'firstName lastName profileImage role');
+
+        // Send message to receiver if online
+        if (users[receiverId]) {
+          users[receiverId].emit("newMessage", {
+            messageId: newMessage._id,
+            sender: newMessage.sender,
+            receiver: newMessage.receiver,
+            message: newMessage.message,
+            messageType: newMessage.messageType,
+            fileUrl: newMessage.fileUrl,
+            conversationId: newMessage.conversationId,
+            createdAt: newMessage.createdAt,
+            isRead: false
+          });
+        }
+
+        // Confirm message sent to sender
+        socket.emit("messageSent", {
+          messageId: newMessage._id,
+          conversationId: newMessage.conversationId,
+          createdAt: newMessage.createdAt,
+          status: "sent"
+        });
+
+      } catch (error) {
+        console.error("Error sending message:", error);
+        socket.emit("error", { message: "Failed to send message" });
+      }
+    });
+
+    // Handle typing indicators
+    socket.on("typing", (data) => {
+      const { receiverId, isTyping } = data;
+      if (users[receiverId]) {
+        users[receiverId].emit("userTyping", {
+          userId: userId,
+          isTyping: isTyping
+        });
+      }
+    });
+
+    // Handle message read status
+    socket.on("markAsRead", async (data) => {
+      try {
+        const { senderId } = data;
+        const receiverId = userId;
+        const conversationId = [senderId, receiverId].sort().join("_");
+
+        // Mark messages as read
+        await ChatMessage.updateMany(
           {
-            upsert: true,
-            new: true,
-          }
+            conversationId,
+            receiver: receiverId,
+            sender: senderId,
+            isRead: false
+          },
+          { isRead: true }
         );
 
-        // Update score
-        const score =
-          (userLog.impression || 0) +
-          (userLog.click || 0) +
-          (userLog.favorite || 0);
-        userLog.score = score;
-        await userLog.save();
-      } catch (error) {
-        console.log("Error", error);
-        socket.emit("error", error.message);
-      }
-    };
-
-    // Handle impression event
-    socket.on("impression", async (data) => {
-      if (!data) {
-        console.error("Invalid data format received", data);
-        return;
-      }
-
-      const { user, storyId } = data;
-      console.log("Received data for impression event:", data);
-
-      if (!user || !storyId) {
-        console.error(" Missing user or storyId");
-        return;
-      }
-
-      const updateFields = { $inc: { impression: scores.impression } };
-      await updateUserLogsAndScores({ user, storyId }, updateFields);
-
-      try {
-        const story = await StoryModel.findById(storyId);
-        if (!story) {
-          console.error("Story not found");
-          socket.emit("Story not found");
-          return;
-        }
-
-        socket.emit("response", {
-          message: "Impression counted successfully",
-        });
-      } catch (error) {
-        console.log("Error handling impression:", error);
-        socket.emit("Error handling impression");
-      }
-    });
-
-    // Handle click event
-    socket.on("click", async (data) => {
-      if (!data) {
-        console.error(" Invalid data format received", data);
-        return;
-      }
-
-      const { user, storyId } = data;
-      console.log("Received data for click event:", data);
-
-      if (!user || !storyId) {
-        console.error("Missing user or storyId");
-        return;
-      }
-
-      const updateFields = { $inc: { click: scores.click } };
-      await updateUserLogsAndScores({ user, storyId }, updateFields);
-
-      try {
-        const story = await StoryModel.findById(storyId);
-        if (!story) {
-          console.error("Story not found");
-          socket.emit("error", "Story not found");
-          return;
-        }
-
-        socket.emit("response", {
-          message: "Click counted successfully",
-        });
-      } catch (error) {
-        console.log("Error handling click:", error);
-        socket.emit("Error handling click");
-      }
-    });
-
-    // Handle favorite event
-    socket.on("favorite", async (data) => {
-      if (!data || !data.user || !data.storyId) {
-        console.error("Invalid data format received", data);
-        return;
-      }
-
-      const { user, storyId, genres } = data;
-      console.log("Received data for favorite event:", data);
-
-      // Update user logs and scores
-      const updateFields = { $inc: { favorite: scores.favorite } };
-      await updateUserLogsAndScores({ user, storyId, genres }, updateFields);
-
-      try {
-        const story = await StoryModel.findById(storyId);
-        if (!story) {
-          console.error("Story not found");
-          socket.emit("Story not found");
-          return;
-        }
-
-        const isAlreadyFavorite = story.isFav.some(
-          (favUserId) => favUserId.toString() === user.toString()
-        );
-
-        if (isAlreadyFavorite) {
-          story.isFav = story.isFav.filter(
-            (favUserId) => favUserId.toString() !== user.toString()
-          );
-
-          if (story.user) {
-            await User.findByIdAndUpdate(story.user, {
-              $inc: { favScore: -1 },
-            });
-          }
-
-          await story.save();
-          socket.emit("response", {
-            message: "Story removed from favorites",
-          });
-        } else {
-          story.isFav.push(user);
-
-          if (story.user) {
-            await User.findByIdAndUpdate(story.user, {
-              $inc: { favScore: 1 },
-            });
-          }
-
-          await story.save();
-          socket.emit("response", {
-            message: "Story favorited successfully",
-            favorite: { user, storyId },
+        if (users[senderId]) {
+          users[senderId].emit("messagesRead", {
+            conversationId,
+            readBy: receiverId
           });
         }
+
+        socket.emit("messagesMarkedAsRead", { conversationId });
+
       } catch (error) {
-        console.log("Error handling favorite:", error);
-        socket.emit("Error handling favorite");
+        console.error("Error marking messages as read:", error);
+        socket.emit("error", { message: "Failed to mark messages as read" });
       }
     });
+
+    socket.on("getUserStatus", (data) => {
+      const { userId: targetUserId } = data;
+      const isOnline = !!users[targetUserId];
+      socket.emit("userStatus", {
+        userId: targetUserId,
+        isOnline
+      });
+    });
+
+    // Broadcast user online status to relevant users
+    socket.broadcast.emit("userOnline", { userId });
 
     // Handle disconnect
     socket.on("disconnect", () => {
-      console.log("User disconnected");
+      console.log("User disconnected:", userId);
+      socket.broadcast.emit("userOffline", { userId });
       delete users[userId];
     });
   });

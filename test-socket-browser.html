@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Test Suite</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        button:hover { opacity: 0.8; transform: translateY(-1px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .log-container {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f8f9fa;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        .log-success { background: #d4edda; color: #155724; }
+        .log-error { background: #f8d7da; color: #721c24; }
+        .log-info { background: #d1ecf1; color: #0c5460; }
+        .log-warning { background: #fff3cd; color: #856404; }
+        
+        .config-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .config-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .config-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .config-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-online { background: #28a745; }
+        .status-offline { background: #dc3545; }
+        .status-connecting { background: #ffc107; animation: pulse 1s infinite; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Socket.IO Real-time Chat Test Suite</h1>
+        
+        <!-- Configuration Panel -->
+        <div class="test-section">
+            <h3>⚙️ Configuration</h3>
+            <div class="config-panel">
+                <div class="config-group">
+                    <label>Server URL:</label>
+                    <input type="text" id="serverUrl" value="http://localhost:3000">
+                </div>
+                <div class="config-group">
+                    <label>Doctor ID:</label>
+                    <input type="text" id="doctorId" value="doctor1">
+                </div>
+                <div class="config-group">
+                    <label>Patient ID:</label>
+                    <input type="text" id="patientId" value="patient1">
+                </div>
+                <div class="config-group">
+                    <label>Test Delay (ms):</label>
+                    <input type="number" id="testDelay" value="1000" min="100" max="5000">
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="test-section">
+            <h3>🔌 Connection Status</h3>
+            <div id="connectionStatus">
+                <p><span class="status-indicator status-offline"></span><span id="doctorStatus">Doctor: Disconnected</span></p>
+                <p><span class="status-indicator status-offline"></span><span id="patientStatus">Patient: Disconnected</span></p>
+            </div>
+        </div>
+
+        <!-- Test Statistics -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="messagesCount">0</div>
+                <div class="stat-label">Messages Sent</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="eventsCount">0</div>
+                <div class="stat-label">Events Fired</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="errorsCount">0</div>
+                <div class="stat-label">Errors</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="testsCount">0</div>
+                <div class="stat-label">Tests Run</div>
+            </div>
+        </div>
+
+        <!-- Test Controls -->
+        <div class="test-section">
+            <h3>🎮 Test Controls</h3>
+            <div class="test-controls">
+                <button class="btn-primary" onclick="runAllTests()">🚀 Run All Tests</button>
+                <button class="btn-success" onclick="testConnection()">🔌 Test Connection</button>
+                <button class="btn-info" onclick="testMessaging()">💬 Test Messaging</button>
+                <button class="btn-warning" onclick="testTyping()">⌨️ Test Typing</button>
+                <button class="btn-info" onclick="testReadReceipts()">👁️ Test Read Receipts</button>
+                <button class="btn-success" onclick="testOnlineStatus()">🟢 Test Online Status</button>
+                <button class="btn-warning" onclick="testMultipleMessages()">📨 Test Multiple Messages</button>
+                <button class="btn-danger" onclick="testErrorHandling()">❌ Test Error Handling</button>
+                <button class="btn-danger" onclick="clearLogs()">🗑️ Clear Logs</button>
+                <button class="btn-primary" onclick="disconnectAll()">🔌 Disconnect All</button>
+            </div>
+        </div>
+
+        <!-- Test Logs -->
+        <div class="test-section">
+            <h3>📋 Test Logs</h3>
+            <div id="logContainer" class="log-container"></div>
+        </div>
+
+        <!-- Manual Testing -->
+        <div class="test-section">
+            <h3>✋ Manual Testing</h3>
+            <div class="test-controls">
+                <input type="text" id="manualMessage" placeholder="Type a message..." style="flex: 1; padding: 8px;">
+                <button class="btn-primary" onclick="sendManualMessage()">Send as Doctor</button>
+                <button class="btn-info" onclick="sendManualMessageAsPatient()">Send as Patient</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SocketTestSuite {
+            constructor() {
+                this.doctorSocket = null;
+                this.patientSocket = null;
+                this.stats = {
+                    messages: 0,
+                    events: 0,
+                    errors: 0,
+                    tests: 0
+                };
+                this.isRunning = false;
+            }
+
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logContainer = document.getElementById('logContainer');
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry log-${type}`;
+                logEntry.innerHTML = `[${timestamp}] ${message}`;
+                logContainer.appendChild(logEntry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+                
+                this.stats.events++;
+                this.updateStats();
+            }
+
+            updateStats() {
+                document.getElementById('messagesCount').textContent = this.stats.messages;
+                document.getElementById('eventsCount').textContent = this.stats.events;
+                document.getElementById('errorsCount').textContent = this.stats.errors;
+                document.getElementById('testsCount').textContent = this.stats.tests;
+            }
+
+            updateConnectionStatus(userId, status) {
+                const statusElement = document.getElementById(`${userId}Status`);
+                const indicator = statusElement.previousElementSibling;
+                
+                statusElement.textContent = `${userId.charAt(0).toUpperCase() + userId.slice(1)}: ${status}`;
+                
+                if (status === 'Connected') {
+                    indicator.className = 'status-indicator status-online';
+                } else if (status === 'Connecting...') {
+                    indicator.className = 'status-indicator status-connecting';
+                } else {
+                    indicator.className = 'status-indicator status-offline';
+                }
+            }
+
+            createSocket(userId) {
+                const serverUrl = document.getElementById('serverUrl').value;
+                this.updateConnectionStatus(userId, 'Connecting...');
+                
+                const socket = io(serverUrl, {
+                    query: { userId }
+                });
+
+                this.setupEventListeners(socket, userId);
+                return socket;
+            }
+
+            setupEventListeners(socket, userId) {
+                socket.on('connect', () => {
+                    this.log(`✅ ${userId} connected successfully`, 'success');
+                    this.updateConnectionStatus(userId, 'Connected');
+                });
+
+                socket.on('disconnect', () => {
+                    this.log(`❌ ${userId} disconnected`, 'warning');
+                    this.updateConnectionStatus(userId, 'Disconnected');
+                });
+
+                socket.on('newMessage', (data) => {
+                    this.log(`📨 ${userId} received: "${data.message}" from ${data.sender.firstName || 'Unknown'}`, 'info');
+                });
+
+                socket.on('messageSent', (data) => {
+                    this.log(`✅ ${userId} message sent: ${data.messageId}`, 'success');
+                    this.stats.messages++;
+                    this.updateStats();
+                });
+
+                socket.on('userTyping', (data) => {
+                    this.log(`⌨️ ${userId} sees ${data.userId} typing: ${data.isTyping}`, 'info');
+                });
+
+                socket.on('userOnline', (data) => {
+                    this.log(`🟢 ${userId} sees ${data.userId} came online`, 'success');
+                });
+
+                socket.on('userOffline', (data) => {
+                    this.log(`🔴 ${userId} sees ${data.userId} went offline`, 'warning');
+                });
+
+                socket.on('messagesRead', (data) => {
+                    this.log(`👁️ ${userId} messages read by ${data.readBy}`, 'info');
+                });
+
+                socket.on('messagesMarkedAsRead', (data) => {
+                    this.log(`✅ ${userId} marked messages as read`, 'success');
+                });
+
+                socket.on('userStatus', (data) => {
+                    this.log(`📊 ${userId} status check: ${data.userId} is ${data.isOnline ? 'online' : 'offline'}`, 'info');
+                });
+
+                socket.on('error', (data) => {
+                    this.log(`❌ ${userId} error: ${data.message}`, 'error');
+                    this.stats.errors++;
+                    this.updateStats();
+                });
+            }
+
+            async wait(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            getDelay() {
+                return parseInt(document.getElementById('testDelay').value) || 1000;
+            }
+
+            async testConnection() {
+                if (this.isRunning) return;
+                this.isRunning = true;
+                this.stats.tests++;
+                
+                this.log('🚀 TEST: Connection Test Started', 'info');
+                
+                const doctorId = document.getElementById('doctorId').value;
+                const patientId = document.getElementById('patientId').value;
+                
+                this.doctorSocket = this.createSocket(doctorId);
+                this.patientSocket = this.createSocket(patientId);
+                
+                await this.wait(this.getDelay() * 2);
+                
+                this.log('✅ Connection test completed', 'success');
+                this.isRunning = false;
+            }
+
+            async testMessaging() {
+                if (!this.doctorSocket || !this.patientSocket) {
+                    await this.testConnection();
+                }
+                
+                this.stats.tests++;
+                this.log('💬 TEST: Messaging Test Started', 'info');
+                
+                const doctorId = document.getElementById('doctorId').value;
+                const patientId = document.getElementById('patientId').value;
+                
+                await this.wait(this.getDelay());
+                
+                this.doctorSocket.emit('sendMessage', {
+                    receiverId: patientId,
+                    message: 'Hello patient, how are you feeling today?',
+                    messageType: 'text'
+                });
+                
+                await this.wait(this.getDelay());
+                
+                this.patientSocket.emit('sendMessage', {
+                    receiverId: doctorId,
+                    message: 'Hello doctor, I am feeling much better!',
+                    messageType: 'text'
+                });
+                
+                await this.wait(this.getDelay());
+                this.log('✅ Messaging test completed', 'success');
+            }
+
+            async testTyping() {
+                if (!this.doctorSocket || !this.patientSocket) {
+                    await this.testConnection();
+                }
+                
+                this.stats.tests++;
+                this.log('⌨️ TEST: Typing Indicators Test Started', 'info');
+                
+                const doctorId = document.getElementById('doctorId').value;
+                const patientId = document.getElementById('patientId').value;
+                
+                // Doctor starts typing
+                this.doctorSocket.emit('typing', { receiverId: patientId, isTyping: true });
+                await this.wait(this.getDelay());
+                
+                // Doctor stops typing
+                this.doctorSocket.emit('typing', { receiverId: patientId, isTyping: false });
+                await this.wait(this.getDelay());
+                
+                // Patient starts typing
+                this.patientSocket.emit('typing', { receiverId: doctorId, isTyping: true });
+                await this.wait(this.getDelay());
+                
+                // Patient stops typing
+                this.patientSocket.emit('typing', { receiverId: doctorId, isTyping: false });
+                
+                this.log('✅ Typing indicators test completed', 'success');
+            }
+
+            async testReadReceipts() {
+                if (!this.doctorSocket || !this.patientSocket) {
+                    await this.testConnection();
+                }
+                
+                this.stats.tests++;
+                this.log('👁️ TEST: Read Receipts Test Started', 'info');
+                
+                const doctorId = document.getElementById('doctorId').value;
+                
+                // Doctor sends message
+                this.doctorSocket.emit('sendMessage', {
+                    receiverId: document.getElementById('patientId').value,
+                    message: 'Please confirm you received this message',
+                    messageType: 'text'
+                });
+                
+                await this.wait(this.getDelay());
+                
+                // Patient marks as read
+                this.patientSocket.emit('markAsRead', { senderId: doctorId });
+                
+                await this.wait(this.getDelay());
+                this.log('✅ Read receipts test completed', 'success');
+            }
+
+            async testOnlineStatus() {
+                this.stats.tests++;
+                this.log('🟢 TEST: Online Status Test Started', 'info');
+                
+                const doctorId = document.getElementById('doctorId').value;
+                const patientId = document.getElementById('patientId').value;
+                
+                // Create doctor socket first
+                if (!this.doctorSocket) {
+                    this.doctorSocket = this.createSocket(doctorId);
+                    await this.wait(this.getDelay());
+                }
+                
+                // Check patient status (should be offline)
+                this.doctorSocket.emit('getUserStatus', { userId: patientId });
+                await this.wait(this.getDelay());
+                
+                // Patient comes online
+                if (!this.patientSocket) {
+                    this.patientSocket = this.createSocket(patientId);
+                    await this.wait(this.getDelay());
+                }
+                
+                // Check patient status again (should be online)
+                this.doctorSocket.emit('getUserStatus', { userId: patientId });
+                
+                this.log('✅ Online status test completed', 'success');
+            }
+
+            async testMultipleMessages() {
+                if (!this.doctorSocket || !this.patientSocket) {
+                    await this.testConnection();
+                }
+                
+                this.stats.tests++;
+                this.log('📨 TEST: Multiple Messages Test Started', 'info');
+                
+                const patientId = document.getElementById('patientId').value;
+                const messages = [
+                    'How are you today?',
+                    'Any symptoms?',
+                    'Take your medication',
+                    'Schedule next appointment'
+                ];
+                
+                for (let i = 0; i < messages.length; i++) {
+                    this.doctorSocket.emit('sendMessage', {
+                        receiverId: patientId,
+                        message: messages[i],
+                        messageType: 'text'
+                    });
+                    await this.wait(500);
+                }
+                
+                await this.wait(this.getDelay());
+                this.log('✅ Multiple messages test completed', 'success');
+            }
+
+            async testErrorHandling() {
+                if (!this.doctorSocket) {
+                    this.doctorSocket = this.createSocket(document.getElementById('doctorId').value);
+                    await this.wait(this.getDelay());
+                }
+                
+                this.stats.tests++;
+                this.log('❌ TEST: Error Handling Test Started', 'info');
+                
+                // Try to send message to non-existent user
+                this.doctorSocket.emit('sendMessage', {
+                    receiverId: 'nonexistent_user_12345',
+                    message: 'This should fail',
+                    messageType: 'text'
+                });
+                
+                await this.wait(this.getDelay() * 2);
+                this.log('✅ Error handling test completed', 'success');
+            }
+
+            async runAllTests() {
+                if (this.isRunning) return;
+                this.isRunning = true;
+                
+                this.log('🧪 Starting Complete Test Suite', 'info');
+                
+                try {
+                    await this.testConnection();
+                    await this.testMessaging();
+                    await this.testTyping();
+                    await this.testReadReceipts();
+                    await this.testOnlineStatus();
+                    await this.testMultipleMessages();
+                    await this.testErrorHandling();
+                    
+                    this.log('🎉 All tests completed successfully!', 'success');
+                } catch (error) {
+                    this.log(`💥 Test suite failed: ${error.message}`, 'error');
+                    this.stats.errors++;
+                    this.updateStats();
+                }
+                
+                this.isRunning = false;
+            }
+
+            sendManualMessage() {
+                const message = document.getElementById('manualMessage').value;
+                if (!message.trim()) return;
+                
+                if (!this.doctorSocket) {
+                    this.log('❌ Doctor not connected. Run connection test first.', 'error');
+                    return;
+                }
+                
+                this.doctorSocket.emit('sendMessage', {
+                    receiverId: document.getElementById('patientId').value,
+                    message: message,
+                    messageType: 'text'
+                });
+                
+                document.getElementById('manualMessage').value = '';
+            }
+
+            sendManualMessageAsPatient() {
+                const message = document.getElementById('manualMessage').value;
+                if (!message.trim()) return;
+                
+                if (!this.patientSocket) {
+                    this.log('❌ Patient not connected. Run connection test first.', 'error');
+                    return;
+                }
+                
+                this.patientSocket.emit('sendMessage', {
+                    receiverId: document.getElementById('doctorId').value,
+                    message: message,
+                    messageType: 'text'
+                });
+                
+                document.getElementById('manualMessage').value = '';
+            }
+
+            disconnectAll() {
+                if (this.doctorSocket) {
+                    this.doctorSocket.disconnect();
+                    this.doctorSocket = null;
+                }
+                if (this.patientSocket) {
+                    this.patientSocket.disconnect();
+                    this.patientSocket = null;
+                }
+                this.log('🔌 All connections closed', 'warning');
+            }
+
+            clearLogs() {
+                document.getElementById('logContainer').innerHTML = '';
+                this.stats = { messages: 0, events: 0, errors: 0, tests: 0 };
+                this.updateStats();
+            }
+        }
+
+        // Initialize test suite
+        const testSuite = new SocketTestSuite();
+
+        // Global functions for buttons
+        function runAllTests() { testSuite.runAllTests(); }
+        function testConnection() { testSuite.testConnection(); }
+        function testMessaging() { testSuite.testMessaging(); }
+        function testTyping() { testSuite.testTyping(); }
+        function testReadReceipts() { testSuite.testReadReceipts(); }
+        function testOnlineStatus() { testSuite.testOnlineStatus(); }
+        function testMultipleMessages() { testSuite.testMultipleMessages(); }
+        function testErrorHandling() { testSuite.testErrorHandling(); }
+        function sendManualMessage() { testSuite.sendManualMessage(); }
+        function sendManualMessageAsPatient() { testSuite.sendManualMessageAsPatient(); }
+        function disconnectAll() { testSuite.disconnectAll(); }
+        function clearLogs() { testSuite.clearLogs(); }
+
+        // Handle Enter key for manual messages
+        document.getElementById('manualMessage').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendManualMessage();
+            }
+        });
+
+        // Initialize
+        testSuite.log('🚀 Socket Test Suite Initialized', 'success');
+        testSuite.log('📋 Configure settings and click "Run All Tests" to begin', 'info');
+    </script>
+</body>
+</html>
