@@ -31,19 +31,23 @@ module.exports.getAllAppoinments = async(req , res)=>{
  */
 module.exports.acceptAppoinmment = async(req , res)=>{
     const {id}=req.params;
+    console.log("id" , id)
     try {
+        console.log("first")
         const acceptAppoinmment = await appoinment.findByIdAndUpdate(
             id,
             { status: "confirmed" },
             { new: true }
         );
 
+        console.log("second")
         if (!acceptAppoinmment) {
             return res.status(404).json({
                 status: false,
                 msg: "Appointment not found",
             });
         }
+        console.log("3rdd")
 
         // Create notification for the patient
         await Notification.create({
@@ -63,7 +67,6 @@ module.exports.acceptAppoinmment = async(req , res)=>{
         });
     }
 }
-
 /**
  * @desciption reject appointment
  * @route GET /api/doctor/rejeect/:id

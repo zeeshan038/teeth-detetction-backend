@@ -4,11 +4,13 @@ const router = require("express").Router();
 const user = require("./user");
 const patient = require("./patient");
 const doctor = require("./doctor");
+const notification = require('./notification')
 
 // routes
 router.use("/user", user);
 router.use("/patient", patient);
 router.use("/doctor", doctor);
+router.use("/notification", notification);
 
 
 module.exports = router;
