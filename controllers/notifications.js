@@ -11,7 +11,7 @@ module.exports.getAllNotifications = async (req, res) => {
     console.log("id" , _id);
 
     try {
-        const notifications = await notification.findById(_id);
+        const notifications = await notification.find({userId:_id});
         return res.status(200).json({
             status: true,
             notification: notifications
