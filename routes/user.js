@@ -17,6 +17,7 @@ const {
 } = require("../controllers/user");
 
 const verifyUser = require("../middlewares/verifyUser");
+const upload = require("../utils/multer");
 //Routes
 router.post("/signup", signup);
 router.post("/login", login);
@@ -31,6 +32,7 @@ router.put("/change-password", changePassword)
 router.put("/edit-profile", editProfile);
 router.get('/getuserInfo' , getUserInfo);
 router.delete("/delete" , deleteUser);
+router.post("/upload-image", upload.single("image"),uploadProfilePicture);
 
 
 module.exports = router;

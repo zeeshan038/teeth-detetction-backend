@@ -515,6 +515,8 @@ module.exports.deleteUser = async (req, res) => {
   }
 };
 
+const cloudinary = require('../config/cloudinary');
+
 /**
  *  @description add user profile image
  *  @route GET /api/user/upload image
@@ -529,21 +531,39 @@ module.exports.uploadProfilePicture = async (req, res) => {
         msg: "No file uploaded",
       });
     }
-    const imgUrl = `http://uploads/${req.file.filename}`;
 
+    // Convert buffer to base64 for Cloudinary upload
+    const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+    // Upload image to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(base64Image, {
+      resource_type: "image",
+      folder: "profile_pictures",
+      public_id: `user_${_id}_${Date.now()}`,
+      transformation: [
+        { width: 400, height: 400, crop: "fill" },
+        { quality: "auto" }
+      ]
+    });
+
+    // Update user with Cloudinary URL
     const updatedUser = await User.findByIdAndUpdate(
       _id,
-      { profileImage: imgUrl },
+      { profileImage: uploadResult.secure_url },
       { new: true }
     );
 
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
     }
+
     return res.status(200).json({
       message: "Profile picture uploaded successfully",
       user: updatedUser,
+      imageUrl: uploadResult.secure_url,
+      cloudinary_id: uploadResult.public_id
     });
+
   } catch (error) {
     return res.status(500).json({
       status: false,
