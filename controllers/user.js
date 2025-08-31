@@ -558,6 +558,7 @@ module.exports.uploadProfilePicture = async (req, res) => {
     }
 
     return res.status(200).json({
+      status : true,
       message: "Profile picture uploaded successfully",
       user: updatedUser,
       imageUrl: uploadResult.secure_url,
