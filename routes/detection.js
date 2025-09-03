@@ -9,3 +9,4 @@ router.use(verifyUser)
 
 router.post("/teeth-detection", upload.single("image"), teathDetection);
 module.exports = router;
+ 

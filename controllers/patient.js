@@ -98,3 +98,58 @@ module.exports.bookAppointment = async (req, res) => {
     }
 }
 
+/**
+ * @desciption get all appointments
+ * @route POST /api/get-appointment
+ * @access Private
+ */
+module.exports.getAllAppointments = async (req, res) => {
+    const { _id } = req.user;
+    try {
+        const appointments = await Appoinment.find({ patientId: _id }).populate("doctorId", "name email phone role");
+        return res.status(200).json({
+            status: true,
+            msg: "Appointments fetched successfully",
+            appointments,
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            status: false,
+            errors: error,
+        });
+    }
+}
+
+
+/**
+ * @desciption get specific appointment
+ * @route POST /api/appointment/:id
+ * @access Private
+ */
+module.exports.getSpecificAppointment = async (req, res) => {
+    const { id } = req.params;
+    const { _id } = req.user;
+   
+    try {
+        const appointment = await Appoinment.findOne({ _id: id, patientId: _id }).populate("doctorId", "name email phone role");
+        if (!appointment) {
+            return res.status(404).json({
+                status: false,
+                msg: "Appointment not found",
+            });
+        }
+        return res.status(200).json({
+            status: true,
+            msg: "Appointment fetched successfully",
+            appointment,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            status: false,
+            errors: error,
+        });
+    }
+}
