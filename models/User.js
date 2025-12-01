@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
     lastName: {
       type: String,
       required: true,
-    },  
+    },
     email: {
       type: String,
       unique: true,
@@ -26,25 +26,29 @@ const userSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    phoneNo :{
+    phoneNo: {
       type: Number
     },
-    role : {
+    role: {
       type: String,
       enum: ["patient", "nurse"],
       default: "patient",
     },
-    speciality : {
+    speciality: {
       type: String,
-      default : ""
+      default: ""
     },
-    profileImage : {
+    profileImage: {
       type: String,
-      default :""
+      default: ""
     },
-    bio:{
-      type : String ,
-      default:""
+    cloudinaryId: {
+      type: String,
+      default: ""
+    },
+    bio: {
+      type: String,
+      default: ""
     }
   },
   {

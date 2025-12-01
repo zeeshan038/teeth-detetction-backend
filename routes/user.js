@@ -30,9 +30,9 @@ router.use(verifyUser);
 router.put("/update-bio", updatebio);
 router.put("/change-password", changePassword)
 router.put("/edit-profile", editProfile);
-router.get('/getuserInfo' , getUserInfo);
-router.delete("/delete" , deleteUser);
-router.post("/upload-image", upload.single("image"),uploadProfilePicture);
+router.get('/getuserInfo', getUserInfo);
+router.delete("/delete", deleteUser);
+router.post("/upload-image", upload.single("image"), uploadProfilePicture);
 
 
 module.exports = router;

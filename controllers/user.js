@@ -50,7 +50,7 @@ module.exports.signup = async (req, res) => {
     const hashedPassword = await bcrypt.hash(payload.password, salt);
 
     //Creating user
-   const user = await User.create({
+    const user = await User.create({
       firstName: payload.firstName,
       lastName: payload.lastName,
       email: payload.email,
@@ -65,8 +65,8 @@ module.exports.signup = async (req, res) => {
     return res.status(201).json({
       status: true,
       msg: "User Registered Successfully!",
-      role : user.role,
-      id : user._id,
+      role: user.role,
+      id: user._id,
       token
     });
   } catch (error) {
@@ -97,10 +97,10 @@ module.exports.login = async (req, res) => {
   try {
     //Checking valid user
     const validUser = await User.findOne({ email: payload.email })
-    .select("+password role");
-    console.log('useer' , validUser);
-    const role = validUser.role;  
-    console.log('role' , role);
+      .select("+password role");
+    console.log('useer', validUser);
+    const role = validUser.role;
+    console.log('role', role);
     if (!validUser) {
       return res.status(401).json({
         status: false,
@@ -131,7 +131,7 @@ module.exports.login = async (req, res) => {
         status: true,
         message: "User Logged In Successfully!",
         id: validUser._id,
-        role : validUser.role,
+        role: validUser.role,
         token,
       });
   } catch (error) {
@@ -147,25 +147,25 @@ module.exports.login = async (req, res) => {
  * @route POST /api/user/update-bio
  * @access Private
  */
-module.exports.updatebio = async(req , res)=>{
-  const {_id} = req.user;
-  const {bio}=req.body;
+module.exports.updatebio = async (req, res) => {
+  const { _id } = req.user;
+  const { bio } = req.body;
 
   try {
-     const user = await User.findById(_id);
-     if (!user) {
+    const user = await User.findById(_id);
+    if (!user) {
       return res.status(404).json({
         status: false,
         msg: "User not found",
       });
-     }
-     user.bio = bio;
-     await user.save();
-     return res.status(200).json({
+    }
+    user.bio = bio;
+    await user.save();
+    return res.status(200).json({
       status: true,
       msg: "Bio updated successfully",
       user,
-     }); 
+    });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -215,7 +215,7 @@ module.exports.forgotPassword = async (req, res) => {
     user.verificationCode = otp;
     user.otpLastSentTime = dayjs().valueOf();
     await user.save();
-    
+
     // Send OTP to user's email
     await sendVerificationEmail(email, otp);
 
@@ -262,7 +262,7 @@ module.exports.verifyOTP = async (req, res) => {
         msg: "User not found",
       });
     }
-    
+
     // Checking otp
     if (!otp) {
       return res.status(400).json({
@@ -494,7 +494,7 @@ module.exports.getUserInfo = async (req, res) => {
  */
 module.exports.deleteUser = async (req, res) => {
   const { _id } = req.user;
-  console.log("id" , _id);
+  console.log("id", _id);
   try {
     const user = await User.findByIdAndDelete(_id);
     if (!user) {
@@ -518,18 +518,59 @@ module.exports.deleteUser = async (req, res) => {
 const cloudinary = require('../config/cloudinary');
 
 /**
- *  @description add user profile image
- *  @route GET /api/user/upload image
+ *  @description Upload user profile image
+ *  @route POST /api/user/upload-image
  *  @access Private
  */
 module.exports.uploadProfilePicture = async (req, res) => {
   const { _id } = req.user;
+
   try {
+    // Check if file is uploaded
     if (!req.file) {
       return res.status(400).json({
         status: false,
-        msg: "No file uploaded",
+        msg: "No image file uploaded. Please select an image.",
       });
+    }
+
+    // Validate Cloudinary configuration
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error('Cloudinary configuration missing');
+      return res.status(500).json({
+        status: false,
+        msg: "Image upload service is not configured properly",
+      });
+    }
+
+    // Validate file size (already handled by multer, but double-check)
+    if (req.file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({
+        status: false,
+        msg: "File size too large. Maximum size is 5MB.",
+      });
+    }
+
+    console.log(`Uploading profile picture for user: ${_id}`);
+
+    // Get current user to check for existing profile image
+    const currentUser = await User.findById(_id);
+    if (!currentUser) {
+      return res.status(404).json({
+        status: false,
+        msg: "User not found"
+      });
+    }
+
+    // Delete old profile image from Cloudinary if it exists
+    if (currentUser.cloudinaryId) {
+      try {
+        await cloudinary.uploader.destroy(currentUser.cloudinaryId);
+        console.log(`Old profile image deleted: ${currentUser.cloudinaryId}`);
+      } catch (deleteError) {
+        console.error('Error deleting old image:', deleteError);
+        // Continue with upload even if deletion fails
+      }
     }
 
     // Convert buffer to base64 for Cloudinary upload
@@ -541,34 +582,64 @@ module.exports.uploadProfilePicture = async (req, res) => {
       folder: "profile_pictures",
       public_id: `user_${_id}_${Date.now()}`,
       transformation: [
-        { width: 400, height: 400, crop: "fill" },
-        { quality: "auto" }
-      ]
+        { width: 400, height: 400, crop: "fill", gravity: "face" },
+        { quality: "auto:good" },
+        { fetch_format: "auto" }
+      ],
+      overwrite: true,
     });
+
+    console.log(`Image uploaded successfully to Cloudinary: ${uploadResult.secure_url}`);
 
     // Update user with Cloudinary URL
     const updatedUser = await User.findByIdAndUpdate(
       _id,
-      { profileImage: uploadResult.secure_url },
+      {
+        profileImage: uploadResult.secure_url,
+        cloudinaryId: uploadResult.public_id
+      },
       { new: true }
     );
 
     if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        status: false,
+        msg: "User not found"
+      });
     }
 
     return res.status(200).json({
-      status : true,
-      message: "Profile picture uploaded successfully",
-      user: updatedUser,
-      imageUrl: uploadResult.secure_url,
-      cloudinary_id: uploadResult.public_id
+      status: true,
+      msg: "Profile picture uploaded successfully",
+      data: {
+        user: updatedUser,
+        imageUrl: uploadResult.secure_url,
+        cloudinaryId: uploadResult.public_id
+      }
     });
 
   } catch (error) {
+    console.error('Upload profile picture error:', error);
+
+    // Handle specific Cloudinary errors
+    if (error.http_code === 401) {
+      return res.status(500).json({
+        status: false,
+        msg: "Image upload authentication failed. Please contact support.",
+      });
+    }
+
+    if (error.http_code === 420) {
+      return res.status(429).json({
+        status: false,
+        msg: "Upload rate limit exceeded. Please try again later.",
+      });
+    }
+
     return res.status(500).json({
       status: false,
-      errors: error.message,
+      msg: "Failed to upload profile picture",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

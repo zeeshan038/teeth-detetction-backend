@@ -1,10 +1,5 @@
 const OpenAI = require('openai');
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
-
 /**
  * @Description  detect teeth disease using GPT-4 Vision API
  * @Route POST /api/detection/teeth-detection
@@ -26,6 +21,11 @@ module.exports.teathDetection = async (req, res) => {
                 message: "OpenAI API key not configured"
             });
         }
+
+        // Initialize OpenAI client (lazy initialization)
+        const openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY
+        });
 
         // Use image buffer directly from multer memory storage
         const imageBuffer = req.file.buffer;
